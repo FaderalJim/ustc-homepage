@@ -77,36 +77,48 @@
                 </section>
             </div>
 
-            <!-- 博文提交功能（直接发MD） -->
-            <section class="bg-white p-6 border border-gray-200 rounded shadow-sm mb-8">
-                <h2 class="text-lg font-bold mb-4 border-b pb-2 text-blue-700">撰写并提交新文章 (Markdown API)</h2>
-                <div class="mb-4 text-xs text-gray-500">此处的发送按钮是独立的，它只在仓库创建新的 markdown 文件，无需点击顶部保存。</div>
+            <!-- 博文发布与编辑器区域 -->
+            <section class="bg-white p-6 border border-gray-200 rounded shadow-sm mb-8" id="editor-section">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-lg font-bold text-blue-700">撰写/编辑 Markdown 文章</h2>
+                    <button onclick="resetEditor()" class="text-sm text-gray-500 hover:text-black">清空并新建</button>
+                </div>
+                
+                <div class="mb-4 text-xs text-gray-500">提示：修改文章无需点击顶部的全局保存，直接点击本区底部按钮即可。</div>
                 <div class="mb-4">
                     <label class="block text-sm font-bold mb-1 text-gray-700">文章标题 (作为文件名加载，无需后缀)</label>
-                    <input type="text" id="post-title" placeholder="流形扫描算法优化探讨" class="w-full border p-2 rounded font-mono text-sm focus:outline-none">
+                    <input type="text" id="post-title" placeholder="流形扫描算法优化探讨" class="w-full border p-2 rounded font-mono text-sm focus:outline-none bg-gray-50" readonly title="如需修改文件名，请先删除原文章并新建。直接编辑仅用于重写正文。">
+                    <input type="hidden" id="post-sha"> <!-- 记录当前编辑文件的 SHA 以覆盖 -->
                 </div>
+                
+                <div class="mb-2 flex flex-wrap gap-2 text-sm">
+                    <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border border-gray-300" onclick="insertInnerLink()">内部超链接</button>
+                    <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border border-gray-300" onclick="insertOuterLink()">外部超链接</button>
+                    <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border border-gray-300" onclick="insertImage()">图片 (URL)</button>
+                    <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border border-gray-300" onclick="insertTable()">表格</button>
+                    <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border border-gray-300" onclick="insertFormula()">公式 (LaTeX)</button>
+                </div>
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1 text-gray-700">Markdown 正文 (支持 LaTeX / $$)</label>
-                    <textarea id="post-content" rows="10" class="w-full border p-2 rounded font-mono text-sm leading-relaxed focus:outline-none"></textarea>
+                    <textarea id="post-content" rows="12" class="w-full border p-2 rounded font-mono text-sm leading-relaxed focus:outline-none"></textarea>
                 </div>
                 <div class="flex items-center">
-                    <button onclick="publishPost()" id="publish-btn" class="bg-blue-600 text-white px-8 py-2 rounded hover:bg-blue-700 transition font-bold">向仓库存入 Markdown</button>
+                    <button onclick="publishPost()" id="publish-btn" class="bg-blue-600 text-white px-8 py-2 rounded hover:bg-blue-700 transition font-bold">保存并向 GitHub 提交文章</button>
                     <span id="status-msg" class="text-xs ml-4"></span>
                 </div>
             </section>
 
-            <!-- 针对文章进行二次数据和专栏管理 -->
+            <!-- 针对文章进行专栏管理及操作 -->
             <section class="bg-white p-6 border border-gray-200 rounded shadow-sm mb-8">
-                <h2 class="text-lg font-bold mb-2 border-b pb-2">已有文章管理(挪入暂出专栏及数据查看)</h2>
-                <div class="text-xs text-gray-500 mb-4">下拉列表归类后会自动记录在系统配置中。注意：改动后需点击顶部的“同步发布”按钮。</div>
+                <h2 class="text-lg font-bold mb-2 border-b pb-2">已有博文管理 (专栏分配、编辑、删除)</h2>
+                <div class="text-xs text-gray-500 mb-4">修改专栏后请务必点击最顶端“同步发布”按钮。</div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead>
                             <tr class="border-b border-t bg-gray-50 text-gray-600">
                                 <th class="py-3 px-4">Github Markdown 文件名</th>
                                 <th class="py-3 px-4 w-40">所处专栏设置</th>
-                                <th class="py-3 px-4 w-24 text-center">系统浏览量</th>
-                                <th class="py-3 px-4 w-24 text-center">系统点赞量</th>
+                                <th class="py-3 px-4 w-32 text-center">操作</th>
                             </tr>
                         </thead>
                         <tbody id="article-manage-list">

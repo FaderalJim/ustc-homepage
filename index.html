@@ -99,11 +99,8 @@
                         recentBlogsList.innerHTML = "<li><span class='text-gray-400 italic'>暂无文章</span></li>";
                     } else {
                         mdFiles.forEach(f => {
-                            const meta = config.blogMeta && config.blogMeta[f.name] ? config.blogMeta[f.name] : {};
-                            const views = meta.views || 0;
-                            const likes = meta.likes || 0;
                             const li = document.createElement("li");
-                            li.innerHTML = `<a href="article.html?file=${encodeURIComponent(f.name)}">${f.name.replace('.md', '')}</a> <span class="text-xs text-gray-400 ml-2">👀${views} | 👍${likes}</span>`;
+                            li.innerHTML = `<a href="article.html?file=${encodeURIComponent(f.name)}">${f.name.replace('.md', '')}</a>`;
                             recentBlogsList.appendChild(li);
                         });
                     }

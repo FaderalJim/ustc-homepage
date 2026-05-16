@@ -24,14 +24,6 @@
             <div id="category-tabs" class="mb-2 sm:mb-0 flex flex-wrap">
                 <button class="tab-btn active" onclick="setCategory(null)">全部</button>
             </div>
-            <div>
-                排序: 
-                <select id="sort-select" class="border border-gray-300 rounded ml-2 px-2 py-1 focus:outline-none" onchange="renderList()">
-                    <option value="name">按文件名(最新提交优先)</option>
-                    <option value="likes">按点赞量</option>
-                    <option value="views">按浏览量</option>
-                </select>
-            </div>
         </div>
 
         <div id="loading-msg" class="text-gray-500 italic">正在从 GitHub 获取最新的文章与配置数据...</div>
@@ -113,9 +105,7 @@
                 return {
                     name: f.name,
                     size: f.size,
-                    categoryId: meta.categoryId || null,
-                    views: meta.views || 0,
-                    likes: meta.likes || 0
+                    categoryId: meta.categoryId || null
                 };
             });
 
@@ -124,16 +114,8 @@
                 displayFiles = displayFiles.filter(item => item.categoryId == currentCatId);
             }
 
-            // Sort
-            const sortMethod = document.getElementById("sort-select").value;
-            if(sortMethod === "likes") {
-                displayFiles.sort((a,b) => b.likes - a.likes);
-            } else if (sortMethod === "views") {
-                displayFiles.sort((a,b) => b.views - a.views);
-            } else {
-                // name based, naive newest approach: github default puts newer created files logic often by name or just reverse
-                displayFiles.sort((a,b) => b.name.localeCompare(a.name));
-            }
+            // Sort default (naive newest approach: github default puts newer created files logic often by name or just reverse)
+            displayFiles.sort((a,b) => b.name.localeCompare(a.name));
 
             // Generate sequence array for article inner nav hook
             const orderedNames = displayFiles.map(i => i.name);
@@ -155,8 +137,6 @@
                     </h2>
                     <div class="text-xs text-gray-500 font-mono flex gap-4">
                         <span>[${catName}]</span>
-                        <span>👍 ${item.likes}</span>
-                        <span>👀 ${item.views}</span>
                     </div>
                 `;
                 listEl.appendChild(li);

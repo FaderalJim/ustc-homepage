@@ -214,16 +214,20 @@ async function loadArticlesAndMergeMeta() {
             const meta = remoteConfig.blogMeta[fName];
 
             const tr = document.createElement("tr");
-            tr.className = "border-b";
+            tr.className = "border-b hover:bg-gray-50";
+            // url encode file name for safe string passing
+            const safeName = encodeURIComponent(fName);
             tr.innerHTML = `
-                <td class="py-2 px-4">${fName}</td>
+                <td class="py-2 px-4 font-mono text-xs">${fName}</td>
                 <td class="py-2 px-4">
                     <select class="border p-1 w-full text-xs rounded" onchange="updateMetaCat('${fName}', this.value)">
                         ${catOptions}
                     </select>
                 </td>
-                <td class="py-2 px-4 text-center">${meta.views}</td>
-                <td class="py-2 px-4 text-center">${meta.likes}</td>
+                <td class="py-2 px-4 text-center space-x-2">
+                    <button onclick="editArticle('${f.sha}', '${safeName}')" class="text-blue-600 hover:underline">编辑</button>
+                    <button onclick="deleteArticle('${f.sha}', '${safeName}')" class="text-red-600 hover:underline">删除</button>
+                </td>
             `;
             tbody.appendChild(tr);
             
@@ -243,6 +247,137 @@ function updateMetaCat(fName, newCatId) {
     document.getElementById("save-config-btn").classList.add("animate-pulse"); // 提示需要保存
 }
 
+// ========================== 文章 Markdown 删除与提取功能 ==========================
+
+async function deleteArticle(sha, encodedName) {
+    const fName = decodeURIComponent(encodedName);
+    if(!confirm(`⚠️ 警告: 确定要从 Github 仓库中直接删除文件 [${fName}] 吗？`)) return;
+
+    const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/blogs/${fName}`;
+    const token = document.getElementById("gh-token").value;
+    
+    try {
+        const res = await fetch(apiUrl, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: `Delete article: ${fName}`,
+                sha: sha
+            })
+        });
+
+        if (res.ok) {
+            alert(`已彻底删除文件 ${fName}`);
+            // 清理 config 中的 meta
+            if(remoteConfig.blogMeta && remoteConfig.blogMeta[fName]) {
+                delete remoteConfig.blogMeta[fName];
+                document.getElementById("save-config-btn").classList.add("animate-pulse"); // 提醒用户保存配置
+            }
+            loadArticlesAndMergeMeta();
+        } else {
+            throw new Error(`删除失败: ${res.status}`);
+        }
+    } catch(e) {
+        alert(e.message);
+    }
+}
+
+async function editArticle(sha, encodedName) {
+    const fName = decodeURIComponent(encodedName);
+    const titleInput = document.getElementById("post-title");
+    const contentArea = document.getElementById("post-content");
+    const shaInput = document.getElementById("post-sha");
+
+    titleInput.value = "加载中...";
+    contentArea.value = "正在从 Github 获取源文件内容...";
+    shaInput.value = sha;
+    
+    document.getElementById("editor-section").scrollIntoView({ behavior: 'smooth' });
+
+    try {
+        const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/blogs/${fName}`;
+        const res = await fetchWithAuth(url);
+        if(!res.ok) throw new Error("获取文件失败");
+        
+        const data = await res.json();
+        titleInput.value = fName.replace('.md', '');
+        titleInput.readOnly = true; // 编辑时不许改主键名
+        titleInput.classList.add("bg-gray-100");
+        contentArea.value = base64ToUtf8(data.content);
+        
+        document.getElementById("status-msg").textContent = `正在编辑: ${fName}`;
+        document.getElementById("status-msg").className = "text-xs text-blue-500 ml-4";
+    } catch(e) {
+        alert(e.message);
+        resetEditor();
+    }
+}
+
+function resetEditor() {
+    document.getElementById("post-title").value = "";
+    document.getElementById("post-title").readOnly = false;
+    document.getElementById("post-title").classList.remove("bg-gray-100");
+    document.getElementById("post-content").value = "";
+    document.getElementById("post-sha").value = "";
+    document.getElementById("status-msg").textContent = "已切换为新建文章模式。";
+    document.getElementById("status-msg").className = "text-xs text-green-600 ml-4";
+}
+
+// ========================== 编辑器富文本插入辅助功能 ==========================
+
+function insertToEditor(text) {
+    const el = document.getElementById("post-content");
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    el.value = el.value.substring(0, start) + text + el.value.substring(end);
+    el.focus();
+    el.selectionEnd = start + text.length;
+}
+
+function insertInnerLink() {
+    let url = prompt("输入内部链接URL (如 article.html?file=xxx.md):");
+    let text = prompt("输入显示中文字符:");
+    if(url && text) {
+        insertToEditor(`<a href="${url}" style="color: #0056b3; text-decoration: underline;">${text}</a>`);
+    }
+}
+
+function insertOuterLink() {
+    let url = prompt("输入外部链接URL (以 http/https 开头):", "https://");
+    let text = prompt("输入外部网站名称 (中文字符):");
+    if(url && text) {
+        // 要求：外部网站超链接能够由我编辑外部网站的中文名，并且点击该标蓝的中文名可以重定向到该外部网站，显示仍然是标蓝的中文名，但外部网站需要额外加粗并斜体。
+        insertToEditor(`<a href="${url}" target="_blank" style="color: #0056b3; text-decoration: underline; font-weight: bold; font-style: italic;">${text}</a>`);
+    }
+}
+
+function insertImage() {
+    let url = prompt("输入图片URL (如果是本地图片请先上传到Github通过图床链接引入):", "https://...");
+    if(url) {
+        insertToEditor(`\n<img src="${url}" alt="image" style="max-width:100%; border-radius:4px; margin:10px 0;" />\n`);
+    }
+}
+
+function insertTable() {
+    let cols = prompt("输入列数:", "3");
+    if(cols && !isNaN(cols)) {
+        let ths = Array.from({length: cols}).map(() => "<th>Header</th>").join("");
+        let tds = Array.from({length: cols}).map(() => "<td>Data</td>").join("");
+        let table = `\n| ${Array.from({length:cols}).map(()=>"Header").join(" | ")} |\n| ${Array.from({length:cols}).map(()=>"---").join(" | ")} |\n| ${Array.from({length:cols}).map(()=>"Data").join(" | ")} |\n`;
+        insertToEditor(table);
+    }
+}
+
+function insertFormula() {
+    let f = prompt("输入 LaTeX 数学公式:");
+    if(f) {
+        insertToEditor(`\n$$ ${f} $$\n`);
+    }
+}
+
 // 独立的发表 Markdown 功能代码
 async function publishPost() {
     let title = document.getElementById("post-title").value.trim();
@@ -260,12 +395,15 @@ async function publishPost() {
     msg.textContent = "正在提交 Markdown...";
     msg.className = "text-xs text-blue-600 font-bold ml-4";
     
-    // Check exist logic
-    let fileSha = null;
-    try {
-        const checkRes = await fetchWithAuth(apiUrl);
-        if (checkRes.ok) fileSha = (await checkRes.json()).sha;
-    } catch(e){}
+    // 获取当前是否有预设的 SHA（代表覆盖编辑）
+    let fileSha = document.getElementById("post-sha").value.trim();
+    if (!fileSha) {
+        // 如果没有，再去保险检测一次同名文件防止冲突
+        try {
+            const checkRes = await fetchWithAuth(apiUrl);
+            if (checkRes.ok) fileSha = (await checkRes.json()).sha;
+        } catch(e){}
+    }
 
     const commitData = {
         message: `Create/Update article: ${title}`,
@@ -276,13 +414,15 @@ async function publishPost() {
     try {
         const res = await fetchWithAuth(apiUrl, 'PUT', commitData);
         if (res.ok) {
-            msg.textContent = "✔ 文章写入完成！";
+            msg.textContent = "✔ 文章已成功写回 Github 仓库！";
             msg.className = "text-xs text-green-600 font-bold ml-4";
-            document.getElementById("post-title").value = "";
-            document.getElementById("post-content").value = "";
+            resetEditor(); // 完成后归位编辑器
             // 写入完毕后自动刷新列表，显示在其上的文章管理表单里
             loadArticlesAndMergeMeta();
-        } else { throw new Error('Api Return Non-200'); }
+        } else { 
+            const errorResult = await res.json();
+            throw new Error(errorResult.message || 'API Return Non-200'); 
+        }
     } catch(e) {
         msg.textContent = '❌ ' + e.message;
         msg.className = "text-xs text-red-600 font-bold ml-4";
