@@ -3,42 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown 在线发布后台</title>
+    <title>后台管理控制台 | API Driven</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>body { font-family: "Georgia", "Times New Roman", serif; background-color: #fcfcfc; }</style>
 </head>
-<body class="max-w-4xl mx-auto px-6 py-12">
+<body class="max-w-5xl mx-auto px-6 py-12">
     <header class="mb-8 flex justify-between items-center border-b border-gray-200 pb-4">
-        <h1 class="text-2xl font-bold text-gray-800">极简 Markdown 发布后台</h1>
+        <h1 class="text-2xl font-bold text-gray-800">极简 GitHub 静态后台管理</h1>
         <nav class="space-x-4 text-sm">
             <a href="index.html" class="text-blue-600 hover:underline">返回主页</a>
-            <a href="blog.html" class="text-blue-600 hover:underline">查看博客</a>
+            <a href="blog.html" class="text-blue-600 hover:underline">查看博客列表</a>
         </nav>
     </header>
 
-    <main class="bg-white p-6 border border-gray-200 rounded shadow-sm">
-        <div class="mb-4">
-            <label class="block text-sm font-bold mb-1 text-gray-700">GitHub Personal Access Token</label>
-            <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-gray-500 font-mono text-sm">
-            <p class="text-xs text-gray-400 mt-1">出于安全，该 Token 将仅在当前会话保存，用于本次提交鉴权。</p>
-        </div>
-        
-        <div class="mb-4">
-            <label class="block text-sm font-bold mb-1 text-gray-700">文章标题 (作为文件名，无需加后缀)</label>
-            <input type="text" id="post-title" placeholder="例如：流形扫描算法探究" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-gray-500">
-        </div>
-
-        <div class="mb-6">
-            <label class="block text-sm font-bold mb-1 text-gray-700">Markdown 纯文本正文 (支持 LaTeX 数学公式)</label>
-            <textarea id="post-content" rows="18" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-gray-500 font-mono text-sm leading-relaxed" placeholder="# 标题\n\n正文内容...\n\n数学公式示例：\n$$ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$"></textarea>
+    <main>
+        <!-- 鉴权区域 -->
+        <div class="bg-indigo-50 p-6 rounded mb-8 border border-indigo-100 shadow-sm" id="auth-section">
+            <h2 class="text-lg font-bold mb-2">安全登录 (使用 GitHub Token 替代传统密码)</h2>
+            <p class="text-xs text-gray-600 mb-4 leading-relaxed">
+                因为纯静态网页没有后端数据库，为了在全网同步下保障绝对安全，**您的 GitHub Personal Access Token （具有 repo 权限）就是您最高级别的管理员“密码”**。<br>
+                我们不会将 Token 明文存入代码（这是危险且会被 GitHub 强制封禁的）。
+            </p>
+            <div class="flex gap-2">
+                <input type="password" id="gh-token" placeholder="输入 ghp_ 格式的 Token..." class="flex-1 border border-gray-300 p-2 rounded focus:outline-none focus:border-gray-500 font-mono text-sm">
+                <button onclick="initAdmin()" id="init-btn" class="bg-indigo-600 text-white px-8 py-2 rounded hover:bg-indigo-700 transition font-bold whitespace-nowrap">联网认证加载</button>
+            </div>
+            <span id="load-msg" class="text-xs text-red-500 mt-2 block"></span>
         </div>
 
-        <div class="flex justify-between items-center pt-4 border-t border-gray-100">
-            <span id="status-msg" class="text-xs text-gray-500">提示：提交过程可能需要几秒钟时间，发布后 GitHub Pages 会有一分钟左右的缓存延迟。</span>
-            <button onclick="publishPost()" id="publish-btn" class="bg-gray-800 text-white px-8 py-2 rounded hover:bg-gray-700 transition font-bold disabled:bg-gray-400">提交发布</button>
+        <!-- 主控面板，认证完毕后显示 -->
+        <div id="admin-panel" style="display: none;">
+            
+            <div class="mb-8 flex flex-col md:flex-row justify-between items-center bg-gray-800 text-white p-4 rounded shadow-lg">
+                <div class="text-sm">
+                    <strong>发布同步机制：</strong>对“资料、专栏和分类归属”的修改，需点击右侧按钮统一提交保存为 <code>config.json</code>
+                </div>
+                <button onclick="saveRemoteConfig()" id="save-config-btn" class="mt-4 md:mt-0 bg-green-500 text-white px-6 py-2 rounded hover:bg-green-400 font-bold transition">同步发布全局配置至 GitHub</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- 个人资料编辑 -->
+                <section class="bg-white p-6 border border-gray-200 rounded shadow-sm">
+                    <h2 class="text-lg font-bold mb-4 border-b pb-2">编辑主页个人资料</h2>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-1 text-gray-700">姓名</label>
+                        <input type="text" id="edit-name" class="w-full border p-2 rounded text-sm focus:outline-none">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-1 text-gray-700">主页履历介绍</label>
+                        <textarea id="edit-resume" rows="3" class="w-full border p-2 rounded text-sm focus:outline-none"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-1 text-gray-700">主页研究方向与爱好</label>
+                        <textarea id="edit-hobbies" rows="3" class="w-full border p-2 rounded text-sm focus:outline-none"></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label class="block text-sm font-bold mb-1 text-gray-700">其他寄语/资料</label>
+                        <textarea id="edit-other" rows="2" class="w-full border p-2 rounded text-sm focus:outline-none"></textarea>
+                    </div>
+                    <button onclick="syncProfileToObj()" class="text-xs bg-gray-200 px-3 py-1 rounded mt-2 hover:bg-gray-300">暂存该修改卡片</button>
+                </section>
+
+                <!-- 专栏管理 -->
+                <section class="bg-white p-6 border border-gray-200 rounded shadow-sm flex flex-col">
+                    <h2 class="text-lg font-bold mb-4 border-b pb-2">博客专栏建立与管理</h2>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="new-category" placeholder="新专栏名称" class="flex-1 border p-2 rounded text-sm">
+                        <button onclick="addCategory()" class="bg-gray-800 text-white px-4 py-2 rounded text-sm whitespace-nowrap">建立</button>
+                    </div>
+                    <ul id="category-list" class="space-y-2 text-sm flex-1 overflow-y-auto max-h-64 pr-2">
+                        <!-- Dynamic -->
+                    </ul>
+                </section>
+            </div>
+
+            <!-- 博文提交功能（直接发MD） -->
+            <section class="bg-white p-6 border border-gray-200 rounded shadow-sm mb-8">
+                <h2 class="text-lg font-bold mb-4 border-b pb-2 text-blue-700">撰写并提交新文章 (Markdown API)</h2>
+                <div class="mb-4 text-xs text-gray-500">此处的发送按钮是独立的，它只在仓库创建新的 markdown 文件，无需点击顶部保存。</div>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold mb-1 text-gray-700">文章标题 (作为文件名加载，无需后缀)</label>
+                    <input type="text" id="post-title" placeholder="流形扫描算法优化探讨" class="w-full border p-2 rounded font-mono text-sm focus:outline-none">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold mb-1 text-gray-700">Markdown 正文 (支持 LaTeX / $$)</label>
+                    <textarea id="post-content" rows="10" class="w-full border p-2 rounded font-mono text-sm leading-relaxed focus:outline-none"></textarea>
+                </div>
+                <div class="flex items-center">
+                    <button onclick="publishPost()" id="publish-btn" class="bg-blue-600 text-white px-8 py-2 rounded hover:bg-blue-700 transition font-bold">向仓库存入 Markdown</button>
+                    <span id="status-msg" class="text-xs ml-4"></span>
+                </div>
+            </section>
+
+            <!-- 针对文章进行二次数据和专栏管理 -->
+            <section class="bg-white p-6 border border-gray-200 rounded shadow-sm mb-8">
+                <h2 class="text-lg font-bold mb-2 border-b pb-2">已有文章管理(挪入暂出专栏及数据查看)</h2>
+                <div class="text-xs text-gray-500 mb-4">下拉列表归类后会自动记录在系统配置中。注意：改动后需点击顶部的“同步发布”按钮。</div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-t bg-gray-50 text-gray-600">
+                                <th class="py-3 px-4">Github Markdown 文件名</th>
+                                <th class="py-3 px-4 w-40">所处专栏设置</th>
+                                <th class="py-3 px-4 w-24 text-center">系统浏览量</th>
+                                <th class="py-3 px-4 w-24 text-center">系统点赞量</th>
+                            </tr>
+                        </thead>
+                        <tbody id="article-manage-list">
+                            <!-- Dynamic -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
         </div>
     </main>
-
     <script src="admin.js"></script>
 </body>
 </html>

@@ -3,29 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文章阅读</title>
-    <!-- Tailwind CSS -->
+    <title>文章阅读 | Serverless</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Marked.js 用于解析 Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    
-    <!-- KaTeX 用于渲染数学公式 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-    <!-- render-a11y 自动包裹并渲染 LaTeX -->
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="initRender()"></script>
-
     <style>
         body { font-family: "Georgia", "Times New Roman", serif; background-color: #fdfdfd; color: #111; line-height: 1.8; }
         .prose h1, .prose h2, .prose h3 { font-family: "Georgia", serif; font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; }
         .prose p { margin-bottom: 1em; }
         .prose img { max-width: 100%; margin: 1.5em auto; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .prose pre { background: #f6f8fa; padding: 1em; overflow-x: auto; border-radius: 4px; }
-        .prose code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.85em; background: #f6f8fa; padding: 0.2em 0.4em; border-radius: 3px; }
+        .prose code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.85em; background: #f6f8fa; padding: 0.2em 0.4em; border-radius: 3px; }
         .prose blockquote { border-left: 4px solid #ddd; padding-left: 1em; color: #666; font-style: italic; }
         .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
-        
         #loading-msg { display: flex; justify-content: center; align-items: center; min-height: 50vh; color: #777; font-style: italic; }
     </style>
 </head>
@@ -35,23 +27,37 @@
             <a href="index.html" class="text-blue-600 hover:underline mr-4">← 首页</a>
             <a href="blog.html" class="text-blue-600 hover:underline">返回博客列表</a>
         </div>
+        <div id="nav-arrows" class="text-gray-500">
+            <a id="prev-btn" href="#" class="hover:text-blue-600 hidden">← 上一篇</a>
+            <span id="nav-sep" class="mx-2 hidden">|</span>
+            <a id="next-btn" href="#" class="hover:text-blue-600 hidden">下一篇 →</a>
+        </div>
     </nav>
 
     <main id="post-container">
-        <div id="loading-msg">正在从 GitHub 获取本文正文，请稍候...</div>
+        <div id="loading-msg">正在同步 GitHub 配置并拉取正文，请稍候...</div>
         
         <div id="article-content" style="display: none;">
-            <h1 id="post-title" class="text-3xl font-bold mb-8 text-gray-900 border-b border-gray-100 pb-4"></h1>
-            <div id="markdown-container" class="prose max-w-none text-gray-800 text-base"></div>
+            <h1 id="post-title" class="text-3xl font-bold mb-2 text-gray-900"></h1>
+            <div class="text-gray-500 mb-8 italic text-sm border-b border-gray-100 pb-4 flex justify-between items-center">
+                <div><span id="post-cat" class="mr-2 px-2 py-1 bg-gray-100 rounded text-xs font-normal"></span></div>
+                <div class="flex items-center gap-4">
+                    <span>👀 <span id="post-views">0</span></span>
+                    <button class="hover:text-red-500 transition px-2 py-1 rounded bg-gray-50 border border-gray-200" disabled>👍 <span id="post-likes">0</span></button>
+                    <!-- 因为是纯静态，由于点赞需要覆盖提交 config.json，故暂时禁止访客点赞防止 config 被非法覆盖 -->
+                </div>
+            </div>
+
+            <div id="markdown-container" class="prose max-w-none text-gray-800 text-base mb-12"></div>
         </div>
     </main>
 
     <script>
         const GITHUB_USERNAME = "faderaljim";
         const GITHUB_REPO = "ustc-homepage";
-        
+        function base64ToUtf8(str) { return decodeURIComponent(escape(window.atob(str))); }
+
         function initRender() {
-            // KaTeX auto-render init triggered after script load
             window.katexLoaded = true;
             renderMathIfReady();
         }
@@ -67,25 +73,49 @@
                 return;
             }
 
-            // Set Title
             document.title = fileName.replace('.md', '') + " - 阅读文章";
             document.getElementById("post-title").textContent = fileName.replace('.md', '');
 
-            // Fetch Markdown from raw.githubusercontent.com
+            const configUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/config.json`;
             const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/blogs/${fileName}`;
+            
             try {
-                const response = await fetch(rawUrl);
-                if (!response.ok) {
-                    throw new Error(`无法获取文件 (HTTP ${response.status})。请检查链接或确保文件在 main 分支的存在。`);
-                }
-                const markdownText = await response.text();
+                const [configRes, mdRes] = await Promise.all([
+                    fetch(configUrl),
+                    fetch(rawUrl)
+                ]);
+
+                if (!mdRes.ok) throw new Error(`无法获取文件 ${mdRes.status}`);
+                const markdownText = await mdRes.text();
                 
-                // Parse markdown to HTML
+                // 处理统计和分类信息
+                let catName = "无栏目";
+                let views = 0;
+                let likes = 0;
+                if (configRes.ok) {
+                    const data = await configRes.json();
+                    const config = JSON.parse(base64ToUtf8(data.content));
+                    const meta = config.blogMeta && config.blogMeta[fileName] ? config.blogMeta[fileName] : null;
+                    if(meta) {
+                        views = meta.views || 0;
+                        likes = meta.likes || 0;
+                        if(meta.categoryId && config.categories) {
+                            catName = config.categories.find(c => c.id == meta.categoryId)?.name || catName;
+                        }
+                    }
+                }
+
+                document.getElementById("post-cat").textContent = catName;
+                document.getElementById("post-views").textContent = views;
+                document.getElementById("post-likes").textContent = likes;
+
                 document.getElementById("markdown-container").innerHTML = marked.parse(markdownText);
                 
                 document.getElementById("loading-msg").style.display = "none";
                 document.getElementById("article-content").style.display = "block";
                 
+                setupNav(fileName);
+
                 articleLoaded = true;
                 renderMathIfReady();
                 
@@ -94,7 +124,34 @@
             }
         });
 
-        // 确保 Markdown 和 KaTeX 都已经装载完毕，再进行数学公式替换
+        function setupNav(currentFileName) {
+            let orderedNames = sessionStorage.getItem("orderedBlogNames");
+            if(orderedNames) {
+                orderedNames = JSON.parse(orderedNames);
+                const curIndex = orderedNames.indexOf(currentFileName);
+                if(curIndex > -1) {
+                    const prevName = orderedNames[curIndex - 1];
+                    const nextName = orderedNames[curIndex + 1];
+                    
+                    const prevBtn = document.getElementById("prev-btn");
+                    const nextBtn = document.getElementById("next-btn");
+                    const sep = document.getElementById("nav-sep");
+                    
+                    if(prevName) {
+                        prevBtn.href = `article.html?file=${encodeURIComponent(prevName)}`;
+                        prevBtn.classList.remove("hidden");
+                    }
+                    if(nextName) {
+                        nextBtn.href = `article.html?file=${encodeURIComponent(nextName)}`;
+                        nextBtn.classList.remove("hidden");
+                    }
+                    if(prevName && nextName) {
+                        sep.classList.remove("hidden");
+                    }
+                }
+            }
+        }
+
         function renderMathIfReady() {
             if (articleLoaded && window.katexLoaded) {
                 renderMathInElement(document.getElementById("markdown-container"), {

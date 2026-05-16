@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>博客列表</title>
+    <title>博客列表 | Serverless</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: "Georgia", "Times New Roman", serif; background-color: #fdfdfd; color: #111; line-height: 1.7; }
+        .tab-btn { background: none; border: none; font-size: 0.85rem; color: #666; cursor: pointer; padding: 2px 8px; margin-right: 8px; border-radius: 4px; }
+        .tab-btn.active { background: #eee; color: #000; font-weight: bold; }
     </style>
 </head>
 <body class="max-w-2xl mx-auto px-6 py-16 flex flex-col min-h-screen">
@@ -18,57 +20,148 @@
     </header>
 
     <main class="flex-1">
-        <div id="loading-msg" class="text-gray-500 italic">正在从 GitHub 获取最新的文章列表，请稍候...</div>
-        <ul id="blog-list" class="space-y-6">
-            <!-- 动态生成列表项 -->
+        <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-gray-100 pb-4">
+            <div id="category-tabs" class="mb-2 sm:mb-0 flex flex-wrap">
+                <button class="tab-btn active" onclick="setCategory(null)">全部</button>
+            </div>
+            <div>
+                排序: 
+                <select id="sort-select" class="border border-gray-300 rounded ml-2 px-2 py-1 focus:outline-none" onchange="renderList()">
+                    <option value="name">按文件名(最新提交优先)</option>
+                    <option value="likes">按点赞量</option>
+                    <option value="views">按浏览量</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="loading-msg" class="text-gray-500 italic">正在从 GitHub 获取最新的文章与配置数据...</div>
+        <ul id="blog-list" class="space-y-6 flex-1">
+            <!-- 动态生成 -->
         </ul>
     </main>
 
     <script>
         const GITHUB_USERNAME = "faderaljim";
         const GITHUB_REPO = "ustc-homepage";
-        
+
+        let fullFiles = [];
+        let categories = [];
+        let blogMeta = {};
+        let currentCatId = null;
+
+        function base64ToUtf8(str) { return decodeURIComponent(escape(window.atob(str))); }
+
         document.addEventListener("DOMContentLoaded", async () => {
-            const listEl = document.getElementById("blog-list");
-            const loadingMsg = document.getElementById("loading-msg");
-            
             try {
-                // 使用 GitHub Contents API 拉取 blogs 目录下的文件
-                const response = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/blogs/`);
+                const configUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/config.json`;
+                const blogsUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/blogs/`;
                 
-                if (!response.ok) {
-                    throw new Error("无法读取目录。确保 blogs 文件夹存在且仓库公开。");
+                const [configRes, blogsRes] = await Promise.all([
+                    fetch(configUrl),
+                    fetch(blogsUrl)
+                ]);
+
+                if(configRes.ok) {
+                    const data = await configRes.json();
+                    let config = JSON.parse(base64ToUtf8(data.content));
+                    categories = config.categories || [];
+                    blogMeta = config.blogMeta || {};
                 }
-                
-                const files = await response.json();
-                const mdFiles = files.filter(f => f.name.endsWith('.md'));
-                
-                loadingMsg.style.display = "none";
-                
-                if (mdFiles.length === 0) {
-                    listEl.innerHTML = "<p class='text-gray-400 italic'>暂无文章。</p>";
-                    return;
-                }
-                
-                // 将文件按某种逻辑排列 (默认 GitHub Contents API 按字母排序)
-                // 这里倒序显示以便最新的(字母后的)靠前，当然最好是在提交时时间戳，这里采用简易反转
-                mdFiles.reverse().forEach(f => {
-                    const li = document.createElement("li");
-                    // 点击后跳转到专门的阅读页面 article.html 并传递 file 参数
-                    li.innerHTML = `
-                        <h2 class="text-lg font-bold mb-1">
-                            <a href="article.html?file=${encodeURIComponent(f.name)}" class="text-blue-600 hover:underline">${f.name.replace('.md', '')}</a>
-                        </h2>
-                        <div class="text-xs text-gray-400 font-mono">Size: ${(f.size / 1024).toFixed(2)} KB</div>
-                    `;
-                    listEl.appendChild(li);
+
+                const tabsEl = document.getElementById("category-tabs");
+                categories.forEach(c => {
+                    const btn = document.createElement("button");
+                    btn.className = "tab-btn";
+                    btn.textContent = c.name;
+                    btn.onclick = () => setCategory(c.id);
+                    tabsEl.appendChild(btn);
                 });
-                
+
+                if(!blogsRes.ok) throw new Error("Blogs Dir Fetch Fail");
+                const filesData = await blogsRes.json();
+                fullFiles = filesData.filter(f => f.name.endsWith('.md'));
+
+                document.getElementById("loading-msg").style.display = "none";
+                renderList();
+
             } catch (error) {
-                loadingMsg.textContent = "❌ 拉取列表失败: " + error.message;
-                loadingMsg.className = "text-red-500 text-sm";
+                document.getElementById("loading-msg").textContent = "❌ " + error.message;
             }
         });
+
+        function setCategory(id) {
+            currentCatId = id;
+            const btns = document.querySelectorAll(".tab-btn");
+            btns.forEach(b => b.classList.remove("active"));
+            
+            if(id === null) {
+                btns[0].classList.add("active");
+            } else {
+                const targetBtn = Array.from(btns).find(b => b.textContent === categories.find(c => c.id == id).name);
+                if(targetBtn) targetBtn.classList.add("active");
+            }
+            renderList();
+        }
+
+        function renderList() {
+            const listEl = document.getElementById("blog-list");
+            listEl.innerHTML = "";
+
+            // Decorate file items with meta info
+            let displayFiles = fullFiles.map(f => {
+                const meta = blogMeta[f.name] || {};
+                return {
+                    name: f.name,
+                    size: f.size,
+                    categoryId: meta.categoryId || null,
+                    views: meta.views || 0,
+                    likes: meta.likes || 0
+                };
+            });
+
+            // Filter
+            if (currentCatId !== null) {
+                displayFiles = displayFiles.filter(item => item.categoryId == currentCatId);
+            }
+
+            // Sort
+            const sortMethod = document.getElementById("sort-select").value;
+            if(sortMethod === "likes") {
+                displayFiles.sort((a,b) => b.likes - a.likes);
+            } else if (sortMethod === "views") {
+                displayFiles.sort((a,b) => b.views - a.views);
+            } else {
+                // name based, naive newest approach: github default puts newer created files logic often by name or just reverse
+                displayFiles.sort((a,b) => b.name.localeCompare(a.name));
+            }
+
+            // Generate sequence array for article inner nav hook
+            const orderedNames = displayFiles.map(i => i.name);
+            sessionStorage.setItem("orderedBlogNames", JSON.stringify(orderedNames));
+
+            if(displayFiles.length === 0) {
+                listEl.innerHTML = "<p class='text-gray-400 italic text-sm'>此分类下暂无文章。</p>";
+                return;
+            }
+
+            displayFiles.forEach(item => {
+                let catName = "无栏目";
+                if(item.categoryId) catName = categories.find(c => c.id == item.categoryId)?.name || catName;
+
+                const li = document.createElement("li");
+                li.innerHTML = `
+                    <h2 class="text-lg font-bold mb-1">
+                        <a href="article.html?file=${encodeURIComponent(item.name)}" class="text-blue-600 hover:underline">${item.name.replace('.md', '')}</a>
+                    </h2>
+                    <div class="text-xs text-gray-500 font-mono flex gap-4">
+                        <span>[${catName}]</span>
+                        <span>👍 ${item.likes}</span>
+                        <span>👀 ${item.views}</span>
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
     </script>
 </body>
 </html>

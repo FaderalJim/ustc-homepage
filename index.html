@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>个人主页</title>
+    <title>个人主页 | Serverless</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: "Georgia", "Times New Roman", serif; background-color: #fdfdfd; color: #111; line-height: 1.7; }
@@ -15,19 +15,21 @@
 <body class="max-w-2xl mx-auto px-6 py-16">
     <header class="mb-12 flex flex-col md:flex-row justify-between items-baseline border-b border-gray-200 pb-6">
         <div>
-            <h1 id="profile-name" class="text-3xl font-bold mb-1"></h1>
+            <h1 id="profile-name" class="text-3xl font-bold mb-1 opacity-0 transition-opacity duration-500"></h1>
             <p class="text-gray-500 italic text-sm">Academic Homepage</p>
         </div>
         <nav class="text-sm mt-4 md:mt-0 space-x-4">
             <a href="blog.html">Writings</a>
-            <a href="login.html" class="text-gray-400 hover:text-gray-700">Admin</a>
+            <a href="admin.html" class="text-gray-400 hover:text-gray-700">Admin</a>
         </nav>
     </header>
 
     <main id="main-content">
         <section class="mb-10">
             <h2 class="section-title">Biography</h2>
-            <div id="profile-resume" class="text-gray-800 text-sm"></div>
+            <div id="profile-resume" class="text-gray-800 text-sm">
+                <span class="text-gray-400 italic">正在从 GitHub 获取配置...</span>
+            </div>
         </section>
 
         <section class="mb-10">
@@ -41,107 +43,77 @@
         </section>
 
         <section class="mb-10">
-            <h2 class="section-title">Selected Writings <span class="text-xs font-normal text-gray-400 italic">API Sync</span></h2>
+            <h2 class="section-title">Selected Writings</h2>
             <ul id="recent-blogs" class="list-disc pl-5 text-sm space-y-2">
                 <li id="index-blog-loading" class="text-gray-400 italic list-none">正在获取 Github 最新文章...</li>
             </ul>
         </section>
-
-        <!-- 留言板区 -->
-        <section class="mb-10 mt-16 pt-8 border-t border-gray-200">
-            <h2 class="section-title">Guestbook</h2>
-            <div class="mb-6 flex flex-col gap-2">
-                <input type="text" id="gb-author" placeholder="您的昵称" class="border border-gray-300 p-2 rounded text-sm w-full md:w-1/2">
-                <textarea id="gb-content" rows="2" placeholder="留下你想说的话..." class="border border-gray-300 p-2 rounded text-sm w-full focus:border-gray-500"></textarea>
-                <button onclick="submitGB()" class="bg-gray-800 text-white px-4 py-2 rounded text-sm w-24 hover:bg-gray-700">提交留言</button>
-            </div>
-            <div id="guestbook-list" class="space-y-4">
-                <!-- dynamic -->
-            </div>
-        </section>
     </main>
 
-    <script src="data.js"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            // Increment total visits
-            incrementVisits();
+        const GITHUB_USERNAME = "faderaljim";
+        const GITHUB_REPO = "ustc-homepage";
 
-            const profile = getProfile();
-            const emptyText = "<span class='text-gray-400 italic'>这个人很懒，什么都没留下</span>";
-            
-            document.getElementById("profile-name").textContent = profile.name || "未命名";
-            document.title = (profile.name || "未命名") + " - 个人主页";
-            
-            document.getElementById("profile-resume").innerHTML = profile.resume ? profile.resume.replace(/\n/g, '<br>') : emptyText;
-            document.getElementById("profile-hobbies").innerHTML = profile.hobbies ? profile.hobbies.replace(/\n/g, '<br>') : emptyText;
-            document.getElementById("profile-other").innerHTML = profile.other ? profile.other.replace(/\n/g, '<br>') : emptyText;
+        function base64ToUtf8(str) {
+            return decodeURIComponent(escape(window.atob(str)));
+        }
 
-            renderGB();
-
-            // Fetch Github API for blogs
-            const GITHUB_USERNAME = "faderaljim";
-            const GITHUB_REPO = "ustc-homepage";
-            const recentBlogsList = document.getElementById("recent-blogs");
+        document.addEventListener("DOMContentLoaded", async () => {
+            const configUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/config.json`;
+            const blogsUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/blogs/`;
             
-            fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/blogs/`)
-                .then(res => res.ok ? res.json() : [])
-                .then(files => {
-                    document.getElementById("index-blog-loading").style.display = "none";
-                    if (!files || files.length === 0) {
-                        recentBlogsList.innerHTML = "<li><span class='text-gray-400 italic'>暂无文章</span></li>";
-                        return;
-                    }
-                    const mdFiles = files.filter(f => f.name.endsWith('.md')).reverse().slice(0, 5); // 倒序取最新前5
+            try {
+                // 并行请求 config 和 blogs 目录
+                const [configRes, blogsRes] = await Promise.all([
+                    fetch(configUrl),
+                    fetch(blogsUrl)
+                ]);
+
+                // 渲染配置
+                const emptyText = "<span class='text-gray-400 italic'>这个人很懒，什么都没留下</span>";
+                let config = { profile: {}, blogMeta: {} };
+                
+                if(configRes.ok) {
+                    const data = await configRes.json();
+                    config = JSON.parse(base64ToUtf8(data.content));
+                }
+                const profile = config.profile || {};
+                
+                const nameEl = document.getElementById("profile-name");
+                nameEl.textContent = profile.name || "未命名";
+                nameEl.classList.remove("opacity-0");
+                document.title = (profile.name || "未命名") + " - 个人主页";
+                
+                document.getElementById("profile-resume").innerHTML = profile.resume ? profile.resume.replace(/\n/g, '<br>') : emptyText;
+                document.getElementById("profile-hobbies").innerHTML = profile.hobbies ? profile.hobbies.replace(/\n/g, '<br>') : emptyText;
+                document.getElementById("profile-other").innerHTML = profile.other ? profile.other.replace(/\n/g, '<br>') : emptyText;
+
+                // 渲染最新文章
+                document.getElementById("index-blog-loading").style.display = "none";
+                const recentBlogsList = document.getElementById("recent-blogs");
+                
+                if (blogsRes.ok) {
+                    const files = await blogsRes.json();
+                    const mdFiles = files.filter(f => f.name.endsWith('.md')).reverse().slice(0, 5); 
                     if(mdFiles.length === 0) {
                         recentBlogsList.innerHTML = "<li><span class='text-gray-400 italic'>暂无文章</span></li>";
-                        return;
+                    } else {
+                        mdFiles.forEach(f => {
+                            const meta = config.blogMeta && config.blogMeta[f.name] ? config.blogMeta[f.name] : {};
+                            const views = meta.views || 0;
+                            const likes = meta.likes || 0;
+                            const li = document.createElement("li");
+                            li.innerHTML = `<a href="article.html?file=${encodeURIComponent(f.name)}">${f.name.replace('.md', '')}</a> <span class="text-xs text-gray-400 ml-2">👀${views} | 👍${likes}</span>`;
+                            recentBlogsList.appendChild(li);
+                        });
                     }
-                    mdFiles.forEach(f => {
-                        const li = document.createElement("li");
-                        li.innerHTML = `<a href="article.html?file=${encodeURIComponent(f.name)}">${f.name.replace('.md', '')}</a>`;
-                        recentBlogsList.appendChild(li);
-                    });
-                })
-                .catch(err => {
-                    document.getElementById("index-blog-loading").textContent = "拉取失败：" + err.message;
-                });
-        });
-
-        function renderGB() {
-            const list = document.getElementById("guestbook-list");
-            list.innerHTML = "";
-            const gb = getGuestbook().sort((a,b) => b.id - a.id);
-            if(gb.length === 0) {
-                list.innerHTML = "<p class='text-sm text-gray-500 italic'>暂无留言，来做第一个吧！</p>";
-                return;
-            }
-            gb.forEach(m => {
-                let currentReplyHTML = "";
-                if(m.reply) {
-                    currentReplyHTML = `<div class="mt-2 text-sm text-blue-800 bg-blue-50 px-3 py-2 rounded-r border-l-2 border-blue-500">
-                        <span class="font-bold">作者回复:</span> ${m.reply}
-                    </div>`;
                 }
-                const div = document.createElement("div");
-                div.className = "border-b border-gray-100 pb-3";
-                div.innerHTML = `
-                    <div class="text-xs text-gray-500 mb-1"><span class="font-bold text-gray-800">${m.author}</span> @ ${m.date}</div>
-                    <div class="text-sm text-gray-800">${m.content}</div>
-                    ${currentReplyHTML}
-                `;
-                list.appendChild(div);
-            });
-        }
 
-        function submitGB() {
-            const author = document.getElementById("gb-author").value.trim() || '匿名读者';
-            const content = document.getElementById("gb-content").value.trim();
-            if(!content) return alert("留言内容不能为空");
-            addGuestbook({ author, content });
-            document.getElementById("gb-content").value = "";
-            renderGB();
-        }
+            } catch(e) {
+                console.error(e);
+                document.getElementById("profile-resume").textContent = "拉取数据失败：" + e.message;
+            }
+        });
     </script>
 </body>
 </html>
