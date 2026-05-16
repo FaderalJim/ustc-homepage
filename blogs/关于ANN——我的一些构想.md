@@ -26,10 +26,11 @@ $$\iota(x) := (x, 0)$$
 核心在于这个“三角联控连续系统”。
 我给主干 $X$ 和增广分支 $A$ 分别装上了“门控” $u_X$ 和 $u_A$。这里的 $\odot$ 表示逐元素的干预（就像我之前想的神经元阀门）：
 
-$$\begin{cases}
-\dot{X}(t) = F_X\bigl(t, X(t); \theta_X\bigr) := u_X\bigl(t, X(t)\bigr) \odot f_X\bigl(t, X(t); \theta_X\bigr), \\[2mm]
-\dot{A}(t) = F_A\bigl(t, X(t), A(t); \theta_A\bigr) := u_A\bigl(t, X(t)\bigr) \odot f_A\bigl(t, X(t), A(t); \theta_A\bigr).
-\end{cases}$$
+$$
+\dot{X}(t) = F_X\bigl(t, X(t); \theta_X\bigr) := u_X\bigl(t, X(t)\bigr) \odot f_X\bigl(t, X(t); \theta_X\bigr),
+$$
+$$
+\dot{A}(t) = F_A\bigl(t, X(t), A(t); \theta_A\bigr) := u_A\bigl(t, X(t)\bigr) \odot f_A\bigl(t, X(t), A(t); \theta_A\bigr).$$
 
 跑到终点后如何输出？
 很简单，用一个投影矩阵 $P$ 把主干 $X$ 的结果切出来，舍弃增广的 $A$：
@@ -40,10 +41,10 @@ $$P = [I_d, 0], \qquad y = PZ(T)$$
 除了常规的拟合损失，我在这里加了一项对增广分支门控的 $L_1$ 惩罚。我的直觉是，如果没有这一项，增广分支就会肆无忌惮地一直开着，失去了“阀门”的稀疏意义：
 
 $$\min_{\theta_X, \, \theta_A}
-\mathbb{E}_{x \sim \mathcal{D}} \Bigl[
+\mathbb{E}_{x \sim \mathcal{D}} ||[
 \mathcal{L}\bigl(P\Phi_T^{\theta}(\iota(x)), g^*(x)\bigr)
 + \lambda \int_0^T \|u_A(t, X(t))\|_1 \, dt
-\Bigr]$$
+\Bigr||$$
 
 (注：这里的 $\Phi_T^{\theta}$ 就是整个系统积分到时刻 $T$ 的流映射。)
 
