@@ -6,8 +6,10 @@
 不过，尽管仍然作为一个门外汉，我还是想透过锁孔看一看门内的风光，因此我提出一些不太严谨，没有经过实验验证的，纯粹的数学的构想，以致讨论，至于可行性等等，见仁见智，或者说见鬼去吧。兴许在我学明白这些东西以后再反过来看只是一个门外汉的狂想，所谓民科的是也；但我还是想留下一点猜想，以待来日证明。
 1. 数学架构
 增广状态空间
-$Z(t)=(X(t),A(t))\in \mathbb R^{d+r},$
-$\iota(x):=(x,0), \qquad x\in\mathcal X.$
+
+$$ Z(t)=(X(t),A(t))\in \mathbb R^{d+r},$$
+
+$$\iota(x):=(x,0), \qquad x\in\mathcal X.$$
 三角联控连续系统$$
 \begin{cases}
 \dot X(t)=F_X\bigl(t,X(t);\theta_X\bigr):=u_X\bigl(t,X(t)\bigr)\odot f_X\bigl(t,X(t);\theta_X\bigr),\\[2mm]
