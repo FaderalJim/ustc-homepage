@@ -6,51 +6,51 @@
 不过，尽管仍然作为一个门外汉，我还是想透过锁孔看一看门内的风光，因此我提出一些不太严谨，没有经过实验验证的，纯粹的数学的构想，以致讨论，至于可行性等等，见仁见智，或者说见鬼去吧。兴许在我学明白这些东西以后再反过来看只是一个门外汉的狂想，所谓民科的是也；但我还是想留下一点猜想，以待来日证明。
 1. 数学架构
 增广状态空间
-Z(t)=(X(t),A(t))\in \mathbb R^{d+r},
-\iota(x):=(x,0), \qquad x\in\mathcal X.
-三角联控连续系统
+$$Z(t)=(X(t),A(t))\in \mathbb R^{d+r},$$
+$$\iota(x):=(x,0), \qquad x\in\mathcal X.$$
+三角联控连续系统$$
 \begin{cases}
 \dot X(t)=F_X\bigl(t,X(t);\theta_X\bigr):=u_X\bigl(t,X(t)\bigr)\odot f_X\bigl(t,X(t);\theta_X\bigr),\\[2mm]
 \dot A(t)=F_A\bigl(t,X(t),A(t);\theta_A\bigr):=u_A\bigl(t,X(t)\bigr)\odot f_A\bigl(t,X(t),A(t);\theta_A\bigr).
-\end{cases}
-输出映射
-P=[I_d,0],\qquad y=PZ(T).
-目标泛函
+\end{cases}$$
+输出映射$$
+P=[I_d,0],\qquad y=PZ(T).$$
+目标泛函$$
 \min_{\theta_X,\,\theta_A}
 \mathbb E_{x\sim\mathcal D}\Bigl[
 \mathcal L\bigl(P\Phi_T^{\theta}(\iota(x)),g^*(x)\bigr)
 +\lambda\int_0^T \|u_A(t,X(t))\|_1\,dt
-\Bigr].
+\Bigr].$$
 2. 基本分析假设
-可解性与正则性假设
+可解性与正则性假设$$
 \text{在 }[0,T]\text{ 上存在紧集 }\Omega\subset\mathbb R^{d+r}\text{ 使所有轨迹留在 }\Omega\text{ 内。}
 f_X,f_A \text{ 关于状态变量在 }\Omega\text{ 上局部 Lipschitz。}
 u_X,u_A \text{ 关于 }X\text{ 在 } \pi_X(\Omega)\text{ 上连续，且在该集合上 Lipschitz。}
 f_X,f_A,u_X,u_A \text{ 对时间 }t\text{ 可测，并对参数连续。}
-\text{向量场在 }\Omega\text{ 上满足线性增长控制，从而保证解不爆炸。}
-存在唯一性结论
+\text{向量场在 }\Omega\text{ 上满足线性增长控制，从而保证解不爆炸。}$$
+存在唯一性结论$$
 \text{在上述假设下，初值问题对每个 }x\in\mathcal X\text{ 存在唯一的 Carath\'eodory 解。}
 \Phi_t(x):=Z(t;x)
-\text{且流映射 }\Phi_t\text{ 连续依赖初值。}
+\text{且流映射 }\Phi_t\text{ 连续依赖初值。}$$
 3. 哪些情况下本架构不能生效
-门控塌缩
+门控塌缩$$
 u_A(X)\equiv 0
-
+$$
 此时增广分支失效，模型退化为低维主通道模型。
 
-门控失控或不正则
+门控失控或不正则$$
 u_X,u_A \text{ 过于尖锐、非 Lipschitz 或高度振荡。}
-
+$$
 此时向量场可能失去稳定可解性，数值误差也难以控制。
 
-目标映射超出连续 ODE 表达范围
+目标映射超出连续 ODE 表达范围$$
 g^*:\mathcal K\to\mathbb R^m
-
+$$
 若目标函数具有强烈跳变、分段不连续或本质离散逻辑结构，则连续 ODE 只能做平滑近似，不能精确表示。
 
-增广维数不足
+增广维数不足$$
 r \text{ 太小}
-
+$$
 会导致高维嵌入空间无法容纳复杂折叠结构，逼近误差可能有不可忽略下界。
 
 工程实现不支持条件跳过
@@ -58,19 +58,19 @@ r \text{ 太小}
 即使理论上门控稀疏，若实现上每一步仍完整计算所有分支，则运行速度不会真正提升。
 
 4. 为什么经典万能逼近定理不再直接适用
-经典万能逼近定理的静态形式
+经典万能逼近定理的静态形式$$
 \sup_{x\in K}|N(x)-g(x)|<\varepsilon
-
+$$
 其中 N 是静态前馈网络，g∈C(K) 是定义在紧集上的连续函数。
 
-不适用的根源
+不适用的根源$$
 \text{TC-AG-NODE 的对象不是静态函数，而是 ODE 终端流 }\Phi_T.
 \text{该流映射受唯一性、可解性和 Lipschitz 结构约束。}
 \text{连续 ODE 流在固定维空间内通常保持局部同胚/微分同胚性质。}
-\text{门控函数和增广状态共同决定可达轨道族，因此容量不是点态逼近理论直接给出的。}
-结论性表述
+\text{门控函数和增广状态共同决定可达轨道族，因此容量不是点态逼近理论直接给出的。}$$
+结论性表述$$
 \text{经典万能逼近定理描述的是静态函数族的稠密性，而 TC-AG-NODE 研究的是端点流映射族。}
-\text{二者属于不同层次的逼近问题，不能直接套用。}
+\text{二者属于不同层次的逼近问题，不能直接套用。}$$
 5. 如何扩展其逼近能力
 增广维数扩展
 
@@ -78,12 +78,7 @@ r \text{ 太小}
 
 向量场族扩展
 
-提高 f
-X
-	​
-
-,f
-A
+提高 $f_X,f_A$
 	​
 
  的表达能力，例如更宽更深的 MLP、残差块、Fourier 特征、分段光滑基函数或混合专家结构。
@@ -92,88 +87,21 @@ A
 
 将门控扩展为更丰富的控制信号，例如：
 
-u_A^{(j)}(t,X),\qquad j=1,\dots,J.
+$$u_A^{(j)}(t,X),\qquad j=1,\dots,J.$$
 
 也可以允许门控依赖 (t,X)：
 
-u_A=u_A(t,X).
+$$u_A=u_A(t,X).$$
 读出层扩展
 
 将线性投影扩展为更一般的读出：
 
-y=R\,\psi(Z(T)),
+$$y=R\,\psi(Z(T)),$$
 
 其中 ψ 是终端非线性读出。
 
 分段演化扩展
 
 将时间区间分割为多个子区间，在每段使用不同参数：
-
-\theta^{(1)},\theta^{(2)},\dots,\theta^{(K)}.
-6. 条件性逼近能力结论
-命题表述
-\text{设 }g^*:\mathcal K\to\mathbb R^m\text{ 连续，}\mathcal K\subset\mathbb R^d\text{ 紧。}
-\text{若增广维数 }r\text{ 足够大，向量场族和门控族具有足够的统一逼近能力，且读出层足够一般，}
-\text{则对任意 }\varepsilon>0,\text{ 存在参数使得 }
-\sup_{x\in\mathcal K}\|y(x)-g^*(x)\|<\varepsilon.
-证明思路
-\text{先在增广空间构造逼近目标图像的轨道族，再通过读出层投影到输出空间。}
-\text{关键在于“增广空间中的表示能力 + 终端读出”，而不是单独依赖经典静态万能逼近定理。}
-7. 几个标准可证明性质
-7.1 唯一性与连续依赖
-\text{在可解性与正则性假设下，系统解存在唯一，并连续依赖初值与参数。}
-7.2 误差传播上界
-
-若整体向量场在紧集上 Lipschitz，常数为 L，且扰动项满足 ∥η(t)∥≤
-η
-ˉ
-	​
-
-，则
-
-\|\delta(T)\|\le e^{LT}\|\delta(0)\|+\int_0^T e^{L(T-s)}\|\eta(s)\|\,ds.
-
-若进一步有 ∥η(t)∥≤
-η
-ˉ
-	​
-
-，则
-
-\|\delta(T)\|\le e^{LT}\|\delta(0)\|+\frac{e^{LT}-1}{L}\bar\eta,
-
-当 L=0 时取极限形式。
-
-7.3 Euler 全局误差
-
-若 ∥
-Z
-¨
-(t)∥≤M，则显式 Euler 方法满足
-
-\max_{0\le k\le N}\|Z(t_k)-Z_k\|\le \frac{hM}{2L}(e^{LT}-1),
-
-其中 h 为步长，L 为向量场 Lipschitz 常数。
-
-8. 从数学架构到数学模型建立
-第一步：定义数据与任务
-x\sim\mathcal D,\qquad g^*(x)\text{ 为目标映射。}
-第二步：构造连续状态与初值
-Z(0)=\iota(x)=(x,0).
-第三步：定义三角联控动力学
-\begin{cases}
-\dot X(t)=u_X\bigl(t,X(t)\bigr)\odot f_X\bigl(t,X(t);\theta_X\bigr),\\[2mm]
-\dot A(t)=u_A\bigl(t,X(t)\bigr)\odot f_A\bigl(t,X(t),A(t);\theta_A\bigr).
-\end{cases}
-第四步：加入正则与稀疏约束
-\mathcal L\bigl(P\Phi_T^{\theta}(\iota(x)),g^*(x)\bigr)
-+\lambda\int_0^T \|u_A(t,X(t))\|_1\,dt
-第五步：离散化与训练
-
-采用 Euler、Runge--Kutta 或自适应 ODE 求解器，将连续模型离散化为可训练数值过程。
-
-9. 可直接放进正文的总结句
-TC-AG-NODE 的严格分析应建立在可解性、正则性、增广维数、门控丰富性与读出层表达能力这些条件之上。
-在这些条件成立时，该架构可在增广空间与投影读出的组合下获得更强的条件性逼近能力。
-其稀疏门控与三角结构有助于控制误差传播并在工程实现上获得潜在加速。
-但若门控塌缩、维数不足、目标不可连续逼近或工程上不支持条件跳过，则其优势会显著减弱甚至退化。
+$$
+\theta^{(1)},\theta^{(2)},\dots,\theta^{(K)}.$$
