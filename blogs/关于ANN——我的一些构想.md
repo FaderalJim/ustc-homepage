@@ -40,11 +40,7 @@ $$P = [I_d, 0], \qquad y = PZ(T)$$
 那么，它到底在优化什么（目标泛函）？
 除了常规的拟合损失，我在这里加了一项对增广分支门控的 $L_1$ 惩罚。我的直觉是，如果没有这一项，增广分支就会肆无忌惮地一直开着，失去了“阀门”的稀疏意义：
 
-$$\min_{\theta_X, \, \theta_A}
-\mathbb{E}_{x \sim \mathcal{D}} ||[
-\mathcal{L}\bigl(P\Phi_T^{\theta}(\iota(x)), g^*(x)\bigr)
-+ \lambda \int_0^T \|u_A(t, X(t))\|_1 \, dt
-\Bigr||$$
+$$\min_{\theta_X, \, \theta_A}\mathbb{E}_{x \sim \mathcal{D}} ||[\mathcal{L}||(P\Phi_T^{\theta}(\iota(x)), g^*(x)||)+ \lambda \int_0^T \|u_A(t, X(t))\|_1 \, dt||$$
 
 (注：这里的 $\Phi_T^{\theta}$ 就是整个系统积分到时刻 $T$ 的流映射。)
 
