@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>后台登录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>body { font-family: "Georgia", "Times New Roman", serif; background-color: #fdfdfd; }</style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 border border-gray-200 shadow-sm w-96 rounded">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">后台管理登录</h1>
+        <div class="mb-4">
+            <label class="block mb-2 text-sm text-gray-600">请输入密码</label>
+            <input type="password" id="password" placeholder="请输入密码" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-gray-500" onkeydown="if(event.key==='Enter') login()">
+        </div>
+        <button onclick="login()" class="w-full bg-gray-800 text-white p-2 rounded hover:bg-gray-700 transition">登录</button>
+        <p id="error-msg" class="text-red-500 text-sm mt-3 hidden text-center">密码错误！</p>
+        
+        <div id="stats" class="mt-8 pt-4 border-t border-gray-100 text-center text-sm text-gray-500 hidden">
+            <div>总访问人数: <span id="stat-visits" class="font-bold text-gray-700">0</span></div>
+            <div>博客总浏览量: <span id="stat-views" class="font-bold text-gray-700">0</span></div>
+        </div>
+
+        <div class="mt-6 text-center">
+            <a href="index.html" class="text-sm text-gray-500 hover:underline">返回首页</a>
+        </div>
+    </div>
+    <script src="data.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Load stats before login? The prompt says "我在登录时可以看到网站被访问的情况和博客的阅览量". Assume this means on the login page itself or dashboard. Let's show it on the login page optionally, or just in admin dashboard. The prompt says "在登录时", we can show it below the form just for visualization if they are the owner, but it's public before login. Let's just show it.
+            const statsDiv = document.getElementById("stats");
+            statsDiv.classList.remove("hidden");
+            const visits = getStats().visits || 0;
+            const blogs = getBlogs();
+            const views = blogs.reduce((acc, b) => acc + (b.views || 0), 0);
+            document.getElementById("stat-visits").textContent = visits;
+            document.getElementById("stat-views").textContent = views;
+        });
+
+        function login() {
+            const pwd = document.getElementById("password").value;
+            const realPwd = getPassword();
+            if (pwd === realPwd) {
+                sessionStorage.setItem("isAdmin", "true");
+                window.location.href = "admin.html";
+            } else {
+                document.getElementById("error-msg").classList.remove("hidden");
+            }
+        }
+    </script>
+</body>
+</html>

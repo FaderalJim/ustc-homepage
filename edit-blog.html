@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑博客</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: "Georgia", "Times New Roman", serif; background-color: #fcfcfc; }
+        .editor-btn { background: #eee; padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin-right: 4px; cursor: pointer; border: 1px solid #ddd; }
+        .editor-btn:hover { background: #ddd; }
+    </style>
+</head>
+<body class="max-w-4xl mx-auto px-6 py-12">
+    <header class="mb-8 border-b border-gray-200 pb-4">
+        <h1 class="text-2xl font-bold text-gray-800" id="page-title">新建博客</h1>
+    </header>
+
+    <main class="bg-white p-6 border border-gray-200 rounded shadow-sm">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-bold mb-1 text-gray-700">标题</label>
+                <input type="text" id="blog-title" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-gray-500" placeholder="请输入文章标题">
+            </div>
+            <div>
+                <label class="block text-sm font-bold mb-1 text-gray-700">栏目</label>
+                <select id="blog-category" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-gray-500">
+                    <option value="">无栏目</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="mb-2 flex flex-wrap gap-2 text-sm border-b pb-2">
+            <span class="font-bold mr-2 text-gray-600">插入:</span>
+            <!-- 插入外部链接按规则生成卡片 -->
+            <button class="editor-btn" onclick="insertLink()">外链卡片</button>
+            <button class="editor-btn" onclick="insertInnerLink()">内部链接</button>
+            
+            <button class="editor-btn" onclick="document.getElementById('file-upload').click()">图片/PDF (.png/.jpeg/.pdf)</button>
+            <input type="file" id="file-upload" class="hidden" accept=".png,.jpg,.jpeg,.pdf" onchange="handleFileUpload(event)">
+            
+            <button class="editor-btn" onclick="insertFormula()">公式 (LaTeX)</button>
+            <button class="editor-btn" onclick="insertTable()">表格</button>
+        </div>
+
+        <div class="mb-6">
+            <textarea id="blog-content" rows="18" class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-gray-500 font-mono text-sm leading-relaxed" placeholder="<p>文章内容 (支持HTML)...</p>"></textarea>
+            <p class="text-xs text-gray-400 mt-1">注：由于安全限制纯前端无法真存储文件到硬盘，文件上传将转换为本地临时base64展示。</p>
+        </div>
+
+        <div class="flex justify-between items-center pt-4 border-t border-gray-100">
+            <a href="admin.html" class="text-gray-500 hover:underline text-sm">返回后台</a>
+            <button onclick="saveCurrentBlog()" class="bg-gray-800 text-white px-8 py-2 rounded hover:bg-gray-700 transition">保存发布</button>
+        </div>
+    </main>
+
+    <script src="data.js"></script>
+    <script>
+        if (sessionStorage.getItem("isAdmin") !== "true") {
+            window.location.href = "login.html";
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const blogId = urlParams.get('id');
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const catSel = document.getElementById("blog-category");
+            getCategories().forEach(c => {
+                const opt = document.createElement("option");
+                opt.value = c.id;
+                opt.textContent = c.name;
+                catSel.appendChild(opt);
+            });
+
+            if (blogId) {
+                document.getElementById("page-title").textContent = "编辑博客";
+                const blog = getBlogById(blogId);
+                if (blog) {
+                    document.getElementById("blog-title").value = blog.title || "";
+                    if(blog.categoryId) document.getElementById("blog-category").value = blog.categoryId;
+                    document.getElementById("blog-content").value = blog.content || "";
+                }
+            }
+        });
+
+        function insertToEditor(text) {
+            const el = document.getElementById("blog-content");
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            el.value = el.value.substring(0, start) + text + el.value.substring(end);
+            el.focus();
+            el.selectionEnd = start + text.length;
+        }
+
+        function insertLink() {
+            let url = prompt("输入外部链接URL:", "https://");
+            let name = prompt("输入网站名称:");
+            if(url && name) {
+                // Generate a clickable card
+                let html = `\n<a href="${url}" target="_blank" style="display:inline-flex; align-items:center; border:1px solid #ddd; padding:8px 12px; border-radius:8px; text-decoration:none; color:#333; margin:8px 0; background:#f9f9f9; box-shadow:0 1px 3px rgba(0,0,0,0.05); transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'"><span style="margin-right:8px;">🔗</span> <span style="font-weight:bold;">${name}</span></a>\n`;
+                insertToEditor(html);
+            }
+        }
+
+        function insertInnerLink() {
+            let url = prompt("输入内部链接URL (如 post.html?id=1):");
+            let text = prompt("输入显示文本:");
+            if(url && text) {
+                insertToEditor(`<a href="${url}" style="color: #0056b3; text-decoration: underline;">${text}</a>`);
+            }
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                let res = event.target.result;
+                if(file.type === "application/pdf") {
+                    insertToEditor(`\n<iframe src="${res}" width="100%" height="500px" style="border:1px solid #ccc; margin:10px 0;"></iframe>\n`);
+                } else {
+                    insertToEditor(`\n<img src="${res}" alt="image" style="max-width:100%; border-radius:4px; margin:10px 0;" />\n`);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function insertFormula() {
+            let f = prompt("输入公式 (LaTeX格式，由于未引入MathJax，将直接使用简单的粗体+斜体或HTML实现, 如果您自己引入了可以通过 $$ 包裹):");
+            if(f) {
+                insertToEditor(`\n<div style="text-align:center; margin:15px 0; font-family: serif; font-style: italic;">\n  $$ ${f} $$\n</div>\n`);
+            }
+        }
+
+        function insertTable() {
+            let cols = prompt("输入列数:", "3");
+            if(cols && !isNaN(cols)) {
+                let ths = Array.from({length: cols}).map(() => "<th>Header</th>").join("");
+                let tds = Array.from({length: cols}).map(() => "<td>Data</td>").join("");
+                let table = `\n<table style="width:100%; border-collapse: collapse; margin:15px 0; border: 1px solid #eaeaea;">\n  <tr style="background:#f9f9f9; border-bottom:2px solid #ddd;">\n    ${ths}\n  </tr>\n  <tr style="border-bottom:1px solid #eaeaea;">\n    ${tds}\n  </tr>\n</table>\n`;
+                insertToEditor(table);
+            }
+        }
+
+        function saveCurrentBlog() {
+            const title = document.getElementById("blog-title").value.trim();
+            const content = document.getElementById("blog-content").value.trim();
+            const catId = document.getElementById("blog-category").value;
+            
+            if (!title) {
+                alert("标题不能为空");
+                return;
+            }
+
+            const blog = {
+                title: title,
+                content: content,
+                categoryId: catId ? parseInt(catId) : null
+            };
+
+            if (blogId) {
+                blog.id = parseInt(blogId);
+                const oldBlog = getBlogById(blogId);
+                blog.date = oldBlog ? oldBlog.date : new Date().toISOString().split('T')[0];
+            }
+
+            saveBlog(blog);
+            window.location.href = "admin.html";
+        }
+    </script>
+</body>
+</html>

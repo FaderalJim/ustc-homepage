@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>流形扫描算法的局部轨迹跟踪 - Xing Yiran</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans fade-in">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-md fixed w-full z-10 top-0">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="text-xl font-bold text-blue-600">
+                    <a href="../index.html">Xing Yiran</a>
+                </div>
+                <div class="space-x-2 md:space-x-4">
+                    <a href="../blog.html" class="text-sm md:text-base hover:text-blue-500 transition">返回博客列表</a>
+                    <a href="../index.html" class="text-sm md:text-base hover:text-blue-500 transition">返回首页</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 文章头部 -->
+    <header class="pt-32 pb-12 px-4 bg-white border-b border-gray-100">
+        <div class="max-w-3xl mx-auto text-center">
+            <div class="text-sm text-purple-600 font-semibold mb-4 tracking-wider uppercase">流形扫描 / Manifold Scanning</div>
+            <h1 class="text-3xl md:text-4xl font-bold mb-6 text-gray-900 leading-tight">流形扫描算法在动力系统中的局部轨迹跟踪</h1>
+            <div class="text-gray-500 text-sm flex justify-center items-center space-x-4">
+                <span>作者: Xing Yiran</span>
+                <span>•</span>
+                <span>发布于: 2026-05-16</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 文章正文 -->
+    <main class="py-12 px-4 max-w-3xl mx-auto min-h-[50vh]">
+        <article class="prose prose-lg prose-blue max-w-none text-gray-700 leading-loose">
+            <p>在处理高维复杂动力系统的参数演化与状态估计问题时，传统的全局降维或全状态空间重构方法往往面临“维数灾难”以及难以承受的计算成本。针对这一痛点，我们近期在流形扫描（Manifold Scanning）算法的框架下，深入探索了一种全新的轨迹跟踪范式。</p>
+
+            <h2 class="text-2xl font-bold text-gray-900 mt-10 mb-4">核心理念：局部跟踪而非全局重现</h2>
+            
+            <p>本研究的<strong>核心思路在于“局部跟踪而非全局重现”</strong>（Local tracking rather than global reproduction）。在许多实际的物理与工程系统中，系统的演化轨迹通常被约束在一个低维的非线性流形上。如果我们试图在整个状态空间中建立一个全局的代理模型（Surrogate Model），不仅需要海量的快照数据（Snapshots），还可能引入严重的全局拟合误差。</p>
+
+            <p>与此相对，流形扫描算法摒弃了对全局流形的完整重构，而是将注意力集中在当前系统状态所在的局部邻域。通过计算局部流形的切空间（Tangent Space）和曲率信息，算法能够以极其经济的计算代价，沿着参数演化的方向进行步进更新。这种局部跟踪策略不仅大幅削减了所需的计算资源，更在面临参数剧烈变化或出现系统分岔（Bifurcation）时，展现出了卓越的鲁棒性。</p>
+
+            <h2 class="text-2xl font-bold text-gray-900 mt-10 mb-4">算法机制与数学推导简述</h2>
+
+            <p>在具体的算法实现中，我们首先利用局部的主成分分析（Local PCA）或自动编码器（Autoencoder）构建当前状态附近的局部坐标系。随后，将系统的偏微分方程（PDEs）投影至该局部切空间上，形成一组低维的常微分方程（ODEs）。</p>
+            
+            <p>随着时间的推移和参数的演化，一旦系统状态偏离了当前的局部流形有效区域（通过监测残差估计），流形扫描机制便被触发。算法将重新采样并更新局部基底，从而实现流形上的“扫描”与“跃迁”。这一过程就像是在迷雾中沿着蜿蜒的山路前行，我们不需要一张完整的全球地图，只需照亮前方几步的路况，便能精准地抵达目的地。</p>
+
+            <h2 class="text-2xl font-bold text-gray-900 mt-10 mb-4">未来展望与应用前景</h2>
+
+            <p>目前，该局部跟踪策略已经在若干标准的流体力学与反应扩散方程基准测试中取得了初步的成功。接下来的工作重点，将是把这一思想与自适应物理信息神经网络（Adaptive PINN）进行深度融合，利用神经网络强大的非线性表达能力，进一步提升局部基底的构造效率与精度。</p>
+
+            <p>我相信，“局部跟踪而非全局重现”的哲学不仅在计算数学中具有指导意义，它同样启示着我们在面对海量信息与复杂系统时，应如何抓住主要矛盾，以更优雅的方式求解问题。</p>
+        </article>
+
+        <!-- 文章底部标签与分享 -->
+        <div class="mt-12 pt-8 border-t border-gray-100 flex flex-wrap gap-2">
+            <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">计算数学</span>
+            <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">流形扫描</span>
+            <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">科学机器学习</span>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-gray-900 text-gray-400 py-8 text-center mt-12">
+        <div class="max-w-4xl mx-auto px-4">
+            <p>&copy; 2026 Xing Yiran. 中国科学技术大学《算法基础》课程第一次大作业.</p>
+        </div>
+    </footer>
+</body>
+</html>

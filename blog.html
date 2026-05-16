@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>博客列表</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: "Georgia", "Times New Roman", serif; background-color: #fdfdfd; color: #111; line-height: 1.7; }
+        .tab-btn { background: none; border: none; font-size: 0.85rem; color: #666; cursor: pointer; padding: 2px 8px; margin-right: 8px; border-radius: 4px; }
+        .tab-btn.active { background: #eee; color: #000; font-weight: bold; }
+    </style>
+</head>
+<body class="max-w-2xl mx-auto px-6 py-16">
+    <header class="mb-12 flex justify-between items-baseline border-b border-gray-200 pb-6">
+        <h1 class="text-3xl font-bold">Writings</h1>
+        <nav class="text-sm">
+            <a href="index.html" class="text-blue-600 hover:underline">返回首页</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-gray-100 pb-4">
+            <div id="category-tabs" class="mb-2 sm:mb-0 flex flex-wrap">
+                <button class="tab-btn active" onclick="setCategory(null)">全部栏目</button>
+            </div>
+            <div>
+                排序: 
+                <select id="sort-select" class="border border-gray-300 rounded ml-2 px-2 py-1 focus:outline-none" onchange="renderBlogs()">
+                    <option value="time">按时间</option>
+                    <option value="likes">按点赞量</option>
+                </select>
+            </div>
+        </div>
+
+        <ul id="blog-list" class="space-y-6">
+            <!-- Dynamic list -->
+        </ul>
+    </main>
+
+    <script src="data.js"></script>
+    <script>
+        let currentCategory = null;
+        let cats = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            cats = getCategories();
+            const tabContainer = document.getElementById("category-tabs");
+            cats.forEach(c => {
+                const btn = document.createElement("button");
+                btn.className = "tab-btn";
+                btn.textContent = c.name;
+                btn.onclick = () => setCategory(c.id);
+                tabContainer.appendChild(btn);
+            });
+            renderBlogs();
+        });
+
+        function setCategory(id) {
+            currentCategory = id;
+            const btns = document.querySelectorAll(".tab-btn");
+            btns.forEach(b => b.classList.remove("active"));
+            
+            if(id === null) {
+                btns[0].classList.add("active");
+                sessionStorage.removeItem("currentCategory");
+            } else {
+                const targetBtn = Array.from(btns).find(b => b.textContent === cats.find(c => c.id == id).name);
+                if(targetBtn) targetBtn.classList.add("active");
+                sessionStorage.setItem("currentCategory", id.toString());
+            }
+            renderBlogs();
+        }
+
+        function renderBlogs() {
+            let blogs = getBlogs().filter(b => b.title && b.title.trim() !== "" && b.content && b.content.trim() !== "");
+            const list = document.getElementById("blog-list");
+            
+            if(currentCategory !== null) {
+                blogs = blogs.filter(b => b.categoryId == currentCategory);
+            }
+
+            const sortMethod = document.getElementById("sort-select").value;
+            if(sortMethod === "likes") {
+                blogs.sort((a,b) => (b.likes || 0) - (a.likes || 0));
+            } else {
+                blogs.sort((a,b) => new Date(b.date) - new Date(a.date));
+            }
+
+            // Save ordered IDs into session storage for next/prev navigation
+            const orderedIds = blogs.map(b => b.id);
+            sessionStorage.setItem("orderedBlogIds", JSON.stringify(orderedIds));
+
+            if (blogs.length === 0) {
+                list.innerHTML = "<p class='text-gray-400 italic'>暂无文章。</p>";
+            } else {
+                list.innerHTML = "";
+                blogs.forEach(blog => {
+                    const catName = cats.find(c => c.id == blog.categoryId)?.name || "无栏目";
+                    const li = document.createElement("li");
+                    li.innerHTML = `
+                        <h2 class="text-lg font-bold mb-1"><a href="post.html?id=${blog.id}" class="text-blue-600 hover:underline">${blog.title}</a></h2>
+                        <div class="text-xs text-gray-500">${blog.date} | [${catName}] | 👍${blog.likes||0} | 👀${blog.views||0}</div>
+                    `;
+                    list.appendChild(li);
+                });
+            }
+        }
+    </script>
+</body>
+</html>

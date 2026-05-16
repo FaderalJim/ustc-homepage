@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人主页</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: "Georgia", "Times New Roman", serif; background-color: #fdfdfd; color: #111; line-height: 1.7; }
+        .section-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.75rem; border-bottom: 1px solid #eaeaea; padding-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; color: #555; }
+        a { color: #0056b3; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body class="max-w-2xl mx-auto px-6 py-16">
+    <header class="mb-12 flex flex-col md:flex-row justify-between items-baseline border-b border-gray-200 pb-6">
+        <div>
+            <h1 id="profile-name" class="text-3xl font-bold mb-1"></h1>
+            <p class="text-gray-500 italic text-sm">Academic Homepage</p>
+        </div>
+        <nav class="text-sm mt-4 md:mt-0 space-x-4">
+            <a href="blog.html">Writings</a>
+            <a href="login.html" class="text-gray-400 hover:text-gray-700">Admin</a>
+        </nav>
+    </header>
+
+    <main id="main-content">
+        <section class="mb-10">
+            <h2 class="section-title">Biography</h2>
+            <div id="profile-resume" class="text-gray-800 text-sm"></div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="section-title">Research & Hobbies</h2>
+            <div id="profile-hobbies" class="text-gray-800 text-sm"></div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="section-title">Miscellaneous</h2>
+            <div id="profile-other" class="text-gray-800 text-sm"></div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="section-title">Selected Writings</h2>
+            <ul id="recent-blogs" class="list-disc pl-5 text-sm space-y-2"></ul>
+        </section>
+
+        <!-- 留言板区 -->
+        <section class="mb-10 mt-16 pt-8 border-t border-gray-200">
+            <h2 class="section-title">Guestbook</h2>
+            <div class="mb-6 flex flex-col gap-2">
+                <input type="text" id="gb-author" placeholder="您的昵称" class="border border-gray-300 p-2 rounded text-sm w-full md:w-1/2">
+                <textarea id="gb-content" rows="2" placeholder="留下你想说的话..." class="border border-gray-300 p-2 rounded text-sm w-full focus:border-gray-500"></textarea>
+                <button onclick="submitGB()" class="bg-gray-800 text-white px-4 py-2 rounded text-sm w-24 hover:bg-gray-700">提交留言</button>
+            </div>
+            <div id="guestbook-list" class="space-y-4">
+                <!-- dynamic -->
+            </div>
+        </section>
+    </main>
+
+    <script src="data.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Increment total visits
+            incrementVisits();
+
+            const profile = getProfile();
+            const emptyText = "<span class='text-gray-400 italic'>这个人很懒，什么都没留下</span>";
+            
+            document.getElementById("profile-name").textContent = profile.name || "未命名";
+            document.title = (profile.name || "未命名") + " - 个人主页";
+            
+            document.getElementById("profile-resume").innerHTML = profile.resume ? profile.resume.replace(/\n/g, '<br>') : emptyText;
+            document.getElementById("profile-hobbies").innerHTML = profile.hobbies ? profile.hobbies.replace(/\n/g, '<br>') : emptyText;
+            document.getElementById("profile-other").innerHTML = profile.other ? profile.other.replace(/\n/g, '<br>') : emptyText;
+
+            // Load valid blogs strictly newest first, max 5 for homepage
+            const blogs = getBlogs();
+            const validBlogs = blogs.filter(b => b.title && b.title.trim() !== "" && b.content && b.content.trim() !== "");
+            const recentBlogsList = document.getElementById("recent-blogs");
+            
+            if (validBlogs.length === 0) {
+                recentBlogsList.innerHTML = "<li>" + emptyText + "</li>";
+            } else {
+                validBlogs.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5).forEach(blog => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `<a href="post.html?id=${blog.id}">${blog.title}</a> <span class="text-gray-400 text-xs ml-2">${blog.date} | 👍${blog.likes||0} | 👀${blog.views||0}</span>`;
+                    recentBlogsList.appendChild(li);
+                });
+            }
+
+            renderGB();
+        });
+
+        function renderGB() {
+            const list = document.getElementById("guestbook-list");
+            list.innerHTML = "";
+            const gb = getGuestbook().sort((a,b) => b.id - a.id);
+            if(gb.length === 0) {
+                list.innerHTML = "<p class='text-sm text-gray-500 italic'>暂无留言，来做第一个吧！</p>";
+                return;
+            }
+            gb.forEach(m => {
+                let currentReplyHTML = "";
+                if(m.reply) {
+                    currentReplyHTML = `<div class="mt-2 text-sm text-blue-800 bg-blue-50 px-3 py-2 rounded-r border-l-2 border-blue-500">
+                        <span class="font-bold">作者回复:</span> ${m.reply}
+                    </div>`;
+                }
+                const div = document.createElement("div");
+                div.className = "border-b border-gray-100 pb-3";
+                div.innerHTML = `
+                    <div class="text-xs text-gray-500 mb-1"><span class="font-bold text-gray-800">${m.author}</span> @ ${m.date}</div>
+                    <div class="text-sm text-gray-800">${m.content}</div>
+                    ${currentReplyHTML}
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function submitGB() {
+            const author = document.getElementById("gb-author").value.trim() || '匿名读者';
+            const content = document.getElementById("gb-content").value.trim();
+            if(!content) return alert("留言内容不能为空");
+            addGuestbook({ author, content });
+            document.getElementById("gb-content").value = "";
+            renderGB();
+        }
+    </script>
+</body>
+</html>

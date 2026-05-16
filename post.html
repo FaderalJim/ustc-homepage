@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>博客文章</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: "Georgia", "Times New Roman", serif; background-color: #fdfdfd; color: #111; line-height: 1.8; }
+        .prose h1, .prose h2, .prose h3 { font-family: "Georgia", serif; font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; }
+        .prose p { margin-bottom: 1em; }
+        img, iframe { display: block; max-width: 100%; margin: 1em auto; }
+    </style>
+</head>
+<body class="max-w-2xl mx-auto px-6 py-16">
+    <nav class="mb-12 border-b border-gray-200 pb-6 text-sm flex justify-between items-center">
+        <div>
+            <a href="index.html" class="text-blue-600 hover:underline mr-4">首页</a>
+            <a href="blog.html" class="text-blue-600 hover:underline">返回列表</a>
+        </div>
+        <div id="nav-arrows" class="text-gray-500">
+            <a id="prev-btn" href="#" class="hover:text-blue-600 hidden">← 上一篇</a>
+            <span id="nav-sep" class="mx-2 hidden">|</span>
+            <a id="next-btn" href="#" class="hover:text-blue-600 hidden">下一篇 →</a>
+        </div>
+    </nav>
+
+    <main id="post-container">
+        <h1 id="post-title" class="text-3xl font-bold mb-2"></h1>
+        <div class="text-gray-500 mb-8 italic text-sm border-b border-gray-100 pb-4 flex justify-between items-center">
+            <div>
+                <span id="post-cat" class="mr-2 px-2 py-1 bg-gray-100 rounded text-xs font-normal"></span>
+                <span id="post-date"></span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span>👀 <span id="post-views">0</span></span>
+                <button onclick="handleLike()" class="hover:text-red-500 transition px-2 py-1 rounded bg-gray-50 border border-gray-200">👍 <span id="post-likes">0</span></button>
+            </div>
+        </div>
+        <div id="post-content" class="prose max-w-none text-gray-800 text-base mb-12"></div>
+        
+        <!-- 评论区 -->
+        <section class="border-t border-gray-200 pt-8 mt-12">
+            <h3 class="text-xl font-bold mb-6">评论</h3>
+            <div class="mb-6 flex flex-col gap-2">
+                <input type="text" id="comment-author" placeholder="您的昵称" class="border border-gray-300 p-2 rounded text-sm w-full md:w-1/2 focus:outline-none focus:border-gray-500">
+                <textarea id="comment-content" rows="2" placeholder="写下你的评论..." class="border border-gray-300 p-2 rounded text-sm w-full focus:outline-none focus:border-gray-500"></textarea>
+                <button onclick="submitComment()" class="bg-gray-800 text-white px-4 py-2 rounded text-sm w-24 hover:bg-gray-700 transition">发布</button>
+            </div>
+
+            <div id="comments-list" class="space-y-6">
+                <!-- dynamic -->
+            </div>
+        </section>
+    </main>
+
+    <script src="data.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const blogId = urlParams.get('id');
+        let blog = null;
+        let isAdmin = sessionStorage.getItem("isAdmin") === "true";
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (!blogId) {
+                document.getElementById("post-container").innerHTML = "<p class='text-gray-500 italic'>参数错误。</p>";
+                return;
+            }
+
+            blog = getBlogById(blogId);
+            if (blog) {
+                // Increment view
+                incrementBlogViews(blogId);
+                blog = getBlogById(blogId); // Refresh
+
+                document.title = blog.title;
+                document.getElementById("post-title").textContent = blog.title;
+                document.getElementById("post-date").textContent = blog.date;
+                document.getElementById("post-views").textContent = blog.views || 0;
+                document.getElementById("post-likes").textContent = blog.likes || 0;
+                document.getElementById("post-content").innerHTML = blog.content;
+
+                const catId = blog.categoryId;
+                const catName = getCategories().find(c => c.id == catId)?.name || '无栏目';
+                document.getElementById("post-cat").textContent = catName;
+
+                setupNav();
+                renderComments();
+            } else {
+                document.getElementById("post-container").innerHTML = "<p class='text-gray-500 italic'>文章不存在或已被删除。</p>";
+            }
+        });
+
+        function setupNav() {
+            let orderedIds = sessionStorage.getItem("orderedBlogIds");
+            if(orderedIds) {
+                orderedIds = JSON.parse(orderedIds);
+                const curIndex = orderedIds.indexOf(parseInt(blogId));
+                if(curIndex > -1) {
+                    const prevId = orderedIds[curIndex - 1]; // "上一篇" in list
+                    const nextId = orderedIds[curIndex + 1]; // "下一篇" in list
+                    
+                    const prevBtn = document.getElementById("prev-btn");
+                    const nextBtn = document.getElementById("next-btn");
+                    const sep = document.getElementById("nav-sep");
+                    
+                    if(prevId) {
+                        prevBtn.href = `post.html?id=${prevId}`;
+                        prevBtn.classList.remove("hidden");
+                    }
+                    if(nextId) {
+                        nextBtn.href = `post.html?id=${nextId}`;
+                        nextBtn.classList.remove("hidden");
+                    }
+                    if(prevId && nextId) {
+                        sep.classList.remove("hidden");
+                    }
+                }
+            }
+        }
+
+        function handleLike() {
+            likeBlog(blogId);
+            blog = getBlogById(blogId);
+            document.getElementById("post-likes").textContent = blog.likes || 0;
+        }
+
+        function submitComment() {
+            const author = document.getElementById("comment-author").value.trim() || '匿名';
+            const content = document.getElementById("comment-content").value.trim();
+            if(!content) return alert("评论不能空");
+            addBlogComment(blogId, { author, content });
+            document.getElementById("comment-content").value = "";
+            blog = getBlogById(blogId);
+            renderComments();
+        }
+
+        function renderComments() {
+            const list = document.getElementById("comments-list");
+            list.innerHTML = "";
+            const comments = blog.comments || [];
+            if(comments.length === 0) {
+                list.innerHTML = "<p class='text-gray-400 italic text-sm'>暂无评论。</p>";
+            } else {
+                // Reverse to show newest first
+                comments.slice().reverse().forEach(c => {
+                    const div = document.createElement("div");
+                    div.className = "border-b border-gray-100 pb-3";
+                    
+                    let replyHTML = "";
+                    if(c.reply) {
+                        replyHTML = `<div class="mt-2 text-sm text-blue-800 bg-blue-50 px-3 py-2 rounded-r border-l-2 border-blue-500">
+                            <strong>作者回复:</strong> ${c.reply}
+                        </div>`;
+                    }
+
+                    let adminActions = "";
+                    if(isAdmin) {
+                        adminActions = `<div class="mt-2 flex gap-2">
+                            <input type="text" id="reply-input-${c.id}" class="border border-gray-300 p-1 text-xs flex-1 rounded" placeholder="回复该评论...">
+                            <button onclick="handleAdminReply(${c.id})" class="bg-gray-200 px-2 py-1 text-xs rounded hover:bg-gray-300">回复</button>
+                            <button onclick="handleAdminDelComment(${c.id})" class="text-red-500 text-xs px-2 py-1">删除</button>
+                        </div>`;
+                    }
+
+                    div.innerHTML = `
+                        <div class="text-xs text-gray-500 mb-1"><strong>${c.author}</strong> @ ${c.date}</div>
+                        <div class="text-sm text-gray-800">${c.content}</div>
+                        ${replyHTML}
+                        ${adminActions}
+                    `;
+                    list.appendChild(div);
+                });
+            }
+        }
+
+        function handleAdminReply(commentId) {
+            const val = document.getElementById(`reply-input-${commentId}`).value.trim();
+            replyBlogComment(blogId, commentId, val);
+            blog = getBlogById(blogId);
+            renderComments();
+        }
+
+        function handleAdminDelComment(commentId) {
+            if(confirm("确定删除?")) {
+                deleteBlogComment(blogId, commentId);
+                blog = getBlogById(blogId);
+                renderComments();
+            }
+        }
+    </script>
+</body>
+</html>
