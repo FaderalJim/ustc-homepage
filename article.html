@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章阅读</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Marked.js 用于解析 Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- KaTeX 用于渲染数学公式 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <!-- render-a11y 自动包裹并渲染 LaTeX -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="initRender()"></script>
+
+    <style>
+        body { font-family: "Georgia", "Times New Roman", serif; background-color: #fdfdfd; color: #111; line-height: 1.8; }
+        .prose h1, .prose h2, .prose h3 { font-family: "Georgia", serif; font-weight: bold; margin-top: 1.5em; margin-bottom: 0.5em; }
+        .prose p { margin-bottom: 1em; }
+        .prose img { max-width: 100%; margin: 1.5em auto; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .prose pre { background: #f6f8fa; padding: 1em; overflow-x: auto; border-radius: 4px; }
+        .prose code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.85em; background: #f6f8fa; padding: 0.2em 0.4em; border-radius: 3px; }
+        .prose blockquote { border-left: 4px solid #ddd; padding-left: 1em; color: #666; font-style: italic; }
+        .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+        
+        #loading-msg { display: flex; justify-content: center; align-items: center; min-height: 50vh; color: #777; font-style: italic; }
+    </style>
+</head>
+<body class="max-w-3xl mx-auto px-6 py-16">
+    <nav class="mb-12 border-b border-gray-200 pb-6 text-sm flex justify-between items-center">
+        <div>
+            <a href="index.html" class="text-blue-600 hover:underline mr-4">← 首页</a>
+            <a href="blog.html" class="text-blue-600 hover:underline">返回博客列表</a>
+        </div>
+    </nav>
+
+    <main id="post-container">
+        <div id="loading-msg">正在从 GitHub 获取本文正文，请稍候...</div>
+        
+        <div id="article-content" style="display: none;">
+            <h1 id="post-title" class="text-3xl font-bold mb-8 text-gray-900 border-b border-gray-100 pb-4"></h1>
+            <div id="markdown-container" class="prose max-w-none text-gray-800 text-base"></div>
+        </div>
+    </main>
+
+    <script>
+        const GITHUB_USERNAME = "faderaljim";
+        const GITHUB_REPO = "ustc-homepage";
+        
+        function initRender() {
+            // KaTeX auto-render init triggered after script load
+            window.katexLoaded = true;
+            renderMathIfReady();
+        }
+
+        let articleLoaded = false;
+        
+        document.addEventListener("DOMContentLoaded", async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileName = urlParams.get('file');
+
+            if (!fileName) {
+                document.getElementById("loading-msg").innerHTML = "<span class='text-red-500'>参数错误：未提供要渲染的文件名。</span>";
+                return;
+            }
+
+            // Set Title
+            document.title = fileName.replace('.md', '') + " - 阅读文章";
+            document.getElementById("post-title").textContent = fileName.replace('.md', '');
+
+            // Fetch Markdown from raw.githubusercontent.com
+            const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/blogs/${fileName}`;
+            try {
+                const response = await fetch(rawUrl);
+                if (!response.ok) {
+                    throw new Error(`无法获取文件 (HTTP ${response.status})。请检查链接或确保文件在 main 分支的存在。`);
+                }
+                const markdownText = await response.text();
+                
+                // Parse markdown to HTML
+                document.getElementById("markdown-container").innerHTML = marked.parse(markdownText);
+                
+                document.getElementById("loading-msg").style.display = "none";
+                document.getElementById("article-content").style.display = "block";
+                
+                articleLoaded = true;
+                renderMathIfReady();
+                
+            } catch (error) {
+                document.getElementById("loading-msg").innerHTML = `<span class='text-red-500'>❌ 加载失败: ${error.message}</span>`;
+            }
+        });
+
+        // 确保 Markdown 和 KaTeX 都已经装载完毕，再进行数学公式替换
+        function renderMathIfReady() {
+            if (articleLoaded && window.katexLoaded) {
+                renderMathInElement(document.getElementById("markdown-container"), {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+    </script>
+</body>
+</html>
