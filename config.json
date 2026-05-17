@@ -20,11 +20,6 @@
     }
   ],
   "blogMeta": {
-    "关于ANN——我的一些构想.md": {
-      "categoryId": 1778916259270,
-      "views": 0,
-      "likes": 0
-    },
     "照片上传示例.md": {
       "categoryId": 1778945065352,
       "views": 0,
@@ -37,6 +32,16 @@
     },
     "照片示例.md": {
       "categoryId": 1778945065352,
+      "views": 0,
+      "likes": 0
+    },
+    "关于ANN——我的一些构想.md": {
+      "categoryId": null,
+      "views": 0,
+      "likes": 0
+    },
+    "奥斯特瓦尔德熟化的连续相场模型.md": {
+      "categoryId": 1778916259270,
       "views": 0,
       "likes": 0
     }
